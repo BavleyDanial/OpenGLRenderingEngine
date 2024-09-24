@@ -6,7 +6,7 @@
 namespace OGLR {
 
     Window::Window(const WindowSpecs& specs)
-    :mGLFWwindow(nullptr), mSpecs(specs) {
+        :mGLFWwindow(nullptr), mSpecs(specs) {
 
         if (!glfwInit())
             assert("Couldn't initialise glfw");
@@ -35,6 +35,8 @@ namespace OGLR {
             const GLFWvidmode* mode = glfwGetVideoMode(monitor);
             glfwSetWindowMonitor(mGLFWwindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
         }
+
+        Input::SetCurrentWindow(mGLFWwindow);
     }
 
     Window::~Window() {
@@ -42,10 +44,14 @@ namespace OGLR {
         glfwTerminate();
     }
 
+    void Window::Close() {
+        glfwSetWindowShouldClose(mGLFWwindow, true);
+    }
 
     void Window::OnUpdate() {
         glfwSwapBuffers(mGLFWwindow);
         glfwPollEvents();
+        Input::OnUpdate();
     }
 
 }

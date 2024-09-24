@@ -2,6 +2,7 @@
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <glfw_input.h>
 
 #include <string>
 #include <cstdint>
@@ -22,13 +23,16 @@ namespace OGLR {
 
         void OnUpdate();
         bool ShouldClose() const { return glfwWindowShouldClose(mGLFWwindow); }
+        void Close();
 
         // TODO: create Setters for these
         uint32_t GetWidth() const { return mSpecs.width; }
         uint32_t GetHeight() const { return mSpecs.width; }
         bool IsVSync() const { return mSpecs.vsync; }
         bool IsFullScreen() const { return mSpecs.fullscreen; }
-    private:
+
+        void Focus() { Input::SetCurrentWindow(mGLFWwindow); }
+    protected:
         GLFWwindow* mGLFWwindow;
         WindowSpecs mSpecs;
     };
