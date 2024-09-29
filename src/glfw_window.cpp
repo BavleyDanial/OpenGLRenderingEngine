@@ -34,6 +34,9 @@ namespace OGLR {
             GLFWmonitor* monitor = glfwGetPrimaryMonitor();
             const GLFWvidmode* mode = glfwGetVideoMode(monitor);
             glfwSetWindowMonitor(mGLFWwindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            mSpecs.width = mode->width;
+            mSpecs.height = mode->height;
+            glViewport(0, 0, mSpecs.width, mSpecs.height);
         }
 
         Input::SetCurrentWindow(mGLFWwindow);
@@ -50,7 +53,6 @@ namespace OGLR {
 
     void Window::OnUpdate() {
         glfwSwapBuffers(mGLFWwindow);
-        glfwPollEvents();
         Input::OnUpdate();
     }
 
