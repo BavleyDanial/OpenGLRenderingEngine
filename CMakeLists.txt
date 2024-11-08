@@ -28,15 +28,15 @@ set(GLM_HEADER "${CMAKE_SOURCE_DIR}/vendor/glm")
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/glfw/")
 find_package( OpenGL REQUIRED )
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/tinyobjloader/")
-add_compile_definitions(TINYOBJLOADER_IMPLEMENTATION)
+#add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/tinyobjloader/")
+#add_compile_definitions(TINYOBJLOADER_IMPLEMENTATION)
 
 set(BIN_NAME "OGLR-${CMAKE_SYSTEM_NAME}-${ARCHITECTURE}")
 add_executable(${BIN_NAME} "${SOURCE}" "${GLAD_SRC}")
 
 target_link_libraries(${BIN_NAME} glfw)
 target_link_libraries(${BIN_NAME} OpenGL::GL)
-target_link_libraries(${BIN_NAME} tinyobjloader)
+#target_link_libraries(${BIN_NAME} tinyobjloader)
 target_include_directories(${BIN_NAME} PUBLIC "${HEADER}" "${GLAD_HEADER}" "${GLM_HEADER}")
 set_target_properties(${BIN_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${OutputDir}"

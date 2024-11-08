@@ -2,6 +2,7 @@
 
 #include <glfw_window.h>
 #include <glfw_input.h>
+#include <shader.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -9,68 +10,57 @@
 
 #include <cyCodeBase-master/cyTriMesh.h>
 
-#include <cstdint>
 #include <iostream>
+#include <cstdint>
 #include <vector>
+#include <memory>
 
-int main(int argc, char** argv)
-{
+#include <map>
+
+int main(int argc, char** argv) {
     if (argc != 2) {
         std::cerr << "Program expected 1 argument, recieved " << argc << '\n';
         return -1;
     }
 
     OGLR::WindowSpecs windowSpecs{};
-    windowSpecs.fullscreen = true;
+    windowSpecs.vsync = false;
     OGLR::Window window(windowSpecs);
 
-    const char* vertex_shader ="#version 330 core\n"
-        "layout (location = 0) in vec3 aPos;\n"
-        "uniform mat4 mvp;\n"
-        "out vec3 vColor;\n"
-        "void main()\n"
-        "{\n"
-        "   gl_Position = mvp * vec4(aPos, 1.0f);\n"
-        "}\0";
-
-    const char* fragment_shader = "#version 330 core\n"
-        "out vec4 FragColor;\n"
-        "void main()\n"
-        "{\n"
-        "   FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
-        "}\n\0";
-
-    uint32_t vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &vertex_shader, nullptr);
-    glCompileShader(vs);
-
-    uint32_t fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &fragment_shader, nullptr);
-    glCompileShader(fs);
-
-    uint32_t program = glCreateProgram();
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-    glUseProgram(program);
-
+    std::unique_ptr<OGLR::Shader> default_shader = std::make_unique<OGLR::Shader>("res/shaders/default.glsl");
     cy::TriMesh mesh;
     mesh.LoadFromFileObj(argv[1]);
 
     std::vector<float> buffer_data;
     std::vector<uint32_t> indices;
+    std::map<std::pair<int, int>, int> vertexMap;
 
     for (int i = 0; i < mesh.NF(); i++) {
-        indices.push_back(mesh.F(i).v[0]);
-        indices.push_back(mesh.F(i).v[1]);
-        indices.push_back(mesh.F(i).v[2]);
+        for (int j = 0; j < 3; ++j) {
+            int pos_index = mesh.F(i).v[j];
+            int norm_index = mesh.FN(i).v[j];
+            auto key = std::make_pair(pos_index, norm_index);
+
+            if (vertexMap.find(key) == vertexMap.end()) {
+                auto position = mesh.V(pos_index);
+                auto norm = mesh.VN(norm_index);
+                buffer_data.push_back(position[0]);
+                buffer_data.push_back(position[1]);
+                buffer_data.push_back(position[2]);
+                buffer_data.push_back(norm[0]);
+                buffer_data.push_back(norm[1]);
+                buffer_data.push_back(norm[2]);
+
+                vertexMap[key] = buffer_data.size() / 6 - 1;
+            }
+
+            indices.push_back(vertexMap[key]);
+        }
     }
 
-    for (int i = 0; i < mesh.NV(); i++) {
-        buffer_data.push_back(mesh.V(i)[0]);
-        buffer_data.push_back(mesh.V(i)[1]);
-        buffer_data.push_back(mesh.V(i)[2]);
-    }
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     uint32_t vao;
     glGenVertexArrays(1, &vao);
@@ -86,24 +76,32 @@ int main(int argc, char** argv)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t)*indices.size(), indices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, (void*) 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, 6*sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, false, 6*sizeof(float), (void*) (3*sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     bool point_mode = false;
+    bool line_mode = false;
     float point_size = 1.0f;
 
     glm::mat4 proj = glm::perspective(glm::radians(60.0f), window.GetWidth() / (float)window.GetHeight(), 0.01f, 1000.0f);
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.05f));
+    model = glm::scale(model, glm::vec3(0.1f));
 
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glm::vec3 cam_pos = glm::vec3(0.0f, 1.0f, 2.5f);
+    float delta_time = 0.0f;
+    float last_time = 0.0f;
 
-    glm::vec3 cam_pos = glm::vec3(0.0f);
     while (!window.ShouldClose()) {
+        float current_time = glfwGetTime();
+        delta_time = current_time - last_time;
+        last_time = current_time;
+
+        std::cout << "FPS: " << int(1 / delta_time) << '\n';
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(35.0f/255, 35.0f/255, 35.0f/255, 1);
 
@@ -114,6 +112,8 @@ int main(int argc, char** argv)
 
         if (OGLR::Input::KeyPressed(GLFW_KEY_F))
             point_mode = !point_mode;
+        if (OGLR::Input::KeyPressed(GLFW_KEY_3))
+            line_mode = !line_mode;
 
         if (OGLR::Input::KeyHeld(GLFW_KEY_W))
             cam_pos.z -= 1 * 0.0167;
@@ -128,18 +128,30 @@ int main(int argc, char** argv)
         if (OGLR::Input::KeyHeld(GLFW_KEY_Q))
             cam_pos.y -= 1 * 0.0167;
 
+        if (OGLR::Input::KeyPressed(GLFW_KEY_H)) {
+            default_shader.reset(new OGLR::Shader("res/shaders/default.glsl"));
+            default_shader->Bind();
+        }
+
         if (point_mode)
             glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
         else
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        view = glm::lookAt(cam_pos, cam_pos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        if (line_mode && !point_mode)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        else if (!point_mode)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        const float radius = 3.0f;
+        float camX = sin(glfwGetTime()) * radius;
+        float camZ = cos(glfwGetTime()) * radius;
+        view = glm::lookAt(glm::vec3(camX, 2.5f, camZ), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));  
         glm::mat4 mvp = proj * view * model;
 
-        glBindVertexArray(vao);
-        glUseProgram(program);
-        uint32_t loc = glGetUniformLocation(program, "mvp");
-        glUniformMatrix4fv(loc, 1, false, glm::value_ptr(mvp));
+        default_shader->Bind();
+        default_shader->SetUniformMatrix4("mvp", mvp);
+        default_shader->SetUniformMatrix4("model", model);
 
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 

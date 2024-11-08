@@ -25,8 +25,6 @@ namespace OGLR {
             assert("Failed to initialize GLAD");
         }
 
-        glViewport(0, 0, mSpecs.width, mSpecs.height);
-
         if (mSpecs.vsync)
             glfwSwapInterval(1);
 
@@ -36,9 +34,9 @@ namespace OGLR {
             glfwSetWindowMonitor(mGLFWwindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
             mSpecs.width = mode->width;
             mSpecs.height = mode->height;
-            glViewport(0, 0, mSpecs.width, mSpecs.height);
         }
 
+        glViewport(0, 0, mSpecs.width, mSpecs.height);
         Input::SetCurrentWindow(mGLFWwindow);
     }
 
