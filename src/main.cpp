@@ -2,7 +2,10 @@
 
 #include <glfw_window.h>
 #include <glfw_input.h>
-#include <shader.h>
+
+#include <Renderer/vertex_buffer.h>
+#include <Renderer/index_buffer.h>
+#include <Renderer/shader.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -25,6 +28,7 @@ int main(int argc, char** argv) {
 
     OGLR::WindowSpecs windowSpecs{};
     windowSpecs.vsync = false;
+    windowSpecs.fullscreen = true;
     OGLR::Window window(windowSpecs);
 
     std::unique_ptr<OGLR::Shader> default_shader = std::make_unique<OGLR::Shader>("res/shaders/default.glsl");
@@ -59,22 +63,15 @@ int main(int argc, char** argv) {
     }
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
 
     uint32_t vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    uint32_t vb;
-    glGenBuffers(1, &vb);
-    glBindBuffer(GL_ARRAY_BUFFER, vb);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*buffer_data.size(), buffer_data.data(), GL_STATIC_DRAW);
-
-    uint32_t ib;
-    glCreateBuffers(1, &ib);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t)*indices.size(), indices.data(), GL_STATIC_DRAW);
+    OGLR::VertexBuffer vertex_buff(buffer_data);
+    vertex_buff.Bind();
+    OGLR::IndexBuffer index_buff(indices);
+    index_buff.Bind();
 
     glVertexAttribPointer(0, 3, GL_FLOAT, false, 6*sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);
@@ -99,8 +96,6 @@ int main(int argc, char** argv) {
         float current_time = glfwGetTime();
         delta_time = current_time - last_time;
         last_time = current_time;
-
-        std::cout << "FPS: " << int(1 / delta_time) << '\n';
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(35.0f/255, 35.0f/255, 35.0f/255, 1);
@@ -143,10 +138,11 @@ int main(int argc, char** argv) {
         else if (!point_mode)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        const float radius = 3.0f;
+        const float radius = 2.0f;
         float camX = sin(glfwGetTime()) * radius;
         float camZ = cos(glfwGetTime()) * radius;
-        view = glm::lookAt(glm::vec3(camX, 2.5f, camZ), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));  
+        //view = glm::lookAt(glm::vec3(camX, 1.7f, camZ), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));  
+        view = glm::lookAt(cam_pos, cam_pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, 1.0, 0.0));  
         glm::mat4 mvp = proj * view * model;
 
         default_shader->Bind();

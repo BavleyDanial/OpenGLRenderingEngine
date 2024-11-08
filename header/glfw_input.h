@@ -6,13 +6,13 @@ namespace OGLR {
 
     class Input {
     public:
-        static bool KeyPressed(uint32_t key) { return mPressedKeys[key]; }
-        static bool KeyHeld(uint32_t key) { return glfwGetKey(mCurrentWindow, key) == GLFW_PRESS; }
-        static bool KeyReleased(uint32_t key) { return mReleasedKeys[key]; }
+        inline static bool KeyPressed(uint32_t key) { return mPressedKeys[key]; }
+        inline static bool KeyHeld(uint32_t key) { return glfwGetKey(mCurrentWindow, key) == GLFW_PRESS; }
+        inline static bool KeyReleased(uint32_t key) { return mReleasedKeys[key]; }
 
-        static bool MouseButtonPressed(uint32_t button) { return mPressedMouseButtons[button]; }
-        static bool MouseButtonHeld(uint32_t button) { return glfwGetMouseButton(mCurrentWindow, button); }
-        static bool MouseButtonReleased(uint32_t button) { return mReleasedMouseButtons[button]; }
+        inline static bool MouseButtonPressed(uint32_t button) { return mPressedMouseButtons[button]; }
+        inline static bool MouseButtonHeld(uint32_t button) { return glfwGetMouseButton(mCurrentWindow, button); }
+        inline static bool MouseButtonReleased(uint32_t button) { return mReleasedMouseButtons[button]; }
 
     protected:
         static void SetCurrentWindow(GLFWwindow* window) { mCurrentWindow = window; }
