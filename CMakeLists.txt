@@ -18,12 +18,14 @@ endif()
 set(OutputDir "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
 
 file(GLOB_RECURSE SOURCE "${CMAKE_SOURCE_DIR}/src/**.cpp")
+file(GLOB_RECURSE HEADER_SOURCE "${CMAKE_SOURCE_DIR}/header/**.h")
 set(HEADER "${CMAKE_SOURCE_DIR}/header/")
 
 file(GLOB_RECURSE GLAD_SRC "${CMAKE_SOURCE_DIR}/vendor/glad/**.c")
 set(GLAD_HEADER "${CMAKE_SOURCE_DIR}/vendor/glad/include")
 
 set(GLM_HEADER "${CMAKE_SOURCE_DIR}/vendor/glm")
+set(STB_HEADER "${CMAKE_SOURCE_DIR}/vendor/stb_image")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/glfw/")
 find_package( OpenGL REQUIRED )
@@ -32,12 +34,12 @@ find_package( OpenGL REQUIRED )
 #add_compile_definitions(TINYOBJLOADER_IMPLEMENTATION)
 
 set(BIN_NAME "OGLR-${CMAKE_SYSTEM_NAME}-${ARCHITECTURE}")
-add_executable(${BIN_NAME} "${SOURCE}" "${GLAD_SRC}")
+add_executable(${BIN_NAME} "${SOURCE}" "${GLAD_SRC}" "${HEADER_SOURCE}")
 
 target_link_libraries(${BIN_NAME} glfw)
 target_link_libraries(${BIN_NAME} OpenGL::GL)
 #target_link_libraries(${BIN_NAME} tinyobjloader)
-target_include_directories(${BIN_NAME} PUBLIC "${HEADER}" "${GLAD_HEADER}" "${GLM_HEADER}")
+target_include_directories(${BIN_NAME} PUBLIC "${HEADER}" "${GLAD_HEADER}" "${GLM_HEADER}" "${STB_HEADER}")
 set_target_properties(${BIN_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${OutputDir}"
 )

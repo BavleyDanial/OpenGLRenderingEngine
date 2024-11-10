@@ -11,7 +11,7 @@ namespace OGLR {
 
     struct WindowSpecs {
         std::string title = "OGLR Window";
-        uint32_t width = 480, height = 680;
+        uint32_t width = 1280, height = 720;
         bool vsync = true;
         bool fullscreen = false;
     };
@@ -21,9 +21,9 @@ namespace OGLR {
         Window(const WindowSpecs& specs);
         ~Window();
 
-        void OnUpdate();
+        void OnUpdate() const;
         bool ShouldClose() const { return glfwWindowShouldClose(mGLFWwindow); }
-        void Close();
+        void Close() const;
 
         // TODO: create Setters for these
         uint32_t GetWidth() const { return mSpecs.width; }
@@ -31,7 +31,9 @@ namespace OGLR {
         bool IsVSync() const { return mSpecs.vsync; }
         bool IsFullScreen() const { return mSpecs.fullscreen; }
 
-        void Focus() { Input::SetCurrentWindow(mGLFWwindow); }
+        void Focus() const { Input::SetCurrentWindow(mGLFWwindow); }
+        void LockMouse() const { glfwSetInputMode(mGLFWwindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED); };
+        void UnLockMouse() const { glfwSetInputMode(mGLFWwindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL); };
     protected:
         GLFWwindow* mGLFWwindow;
         WindowSpecs mSpecs;

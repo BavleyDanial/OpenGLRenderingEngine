@@ -58,10 +58,25 @@ namespace OGLR {
         int location = GetUniformLocation(name);
         glUniform3f(location, value.x, value.y, value.z);
     }
+    
+    void Shader::SetUniform1f(const std::string& name, float value) {
+        int location = GetUniformLocation(name);
+        glUniform1f(location, value);
+    }
+    
+    void Shader::SetUniform1i(const std::string& name, int value) {
+        int location = GetUniformLocation(name);
+        glUniform1i(location, value);
+    }
 
     void Shader::SetUniformMatrix4(const std::string& name, const glm::mat4& value) {
         int location = GetUniformLocation(name);
         glUniformMatrix4fv(location, 1, false, glm::value_ptr(value));
+    }
+    
+    void Shader::SetUniformMatrix3(const std::string& name, const glm::mat3& value) {
+        int location = GetUniformLocation(name);
+        glUniformMatrix3fv(location, 1, false, glm::value_ptr(value));
     }
 
     int Shader::GetUniformLocation(const std::string& name) {

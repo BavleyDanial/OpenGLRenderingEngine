@@ -14,7 +14,7 @@ namespace OGLR {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        mGLFWwindow = glfwCreateWindow(mSpecs.width, mSpecs.height, mSpecs.title.c_str(), nullptr, nullptr);
+        mGLFWwindow = glfwCreateWindow(static_cast<int>(mSpecs.width), static_cast<int>(mSpecs.height), mSpecs.title.c_str(), nullptr, nullptr);
         if (!mGLFWwindow) {
             glfwTerminate();
             assert("Couldn't initialise window");
@@ -36,7 +36,7 @@ namespace OGLR {
             mSpecs.height = mode->height;
         }
 
-        glViewport(0, 0, mSpecs.width, mSpecs.height);
+        glViewport(0, 0, static_cast<int>(mSpecs.width), static_cast<int>(mSpecs.height));
         Input::SetCurrentWindow(mGLFWwindow);
     }
 
@@ -45,11 +45,11 @@ namespace OGLR {
         glfwTerminate();
     }
 
-    void Window::Close() {
+    void Window::Close() const {
         glfwSetWindowShouldClose(mGLFWwindow, true);
     }
 
-    void Window::OnUpdate() {
+    void Window::OnUpdate() const {
         glfwSwapBuffers(mGLFWwindow);
         Input::OnUpdate();
     }

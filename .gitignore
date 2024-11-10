@@ -10,6 +10,11 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
+**.obj
+**.mtl
+**.png
+**.txt
+
 .cache/
 bin/
 bin-int/

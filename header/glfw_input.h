@@ -2,17 +2,27 @@
 
 #include <GLFW/glfw3.h>
 
+#include <tuple>
+
+#include "glfw_window.h"
+
 namespace OGLR {
 
     class Input {
     public:
-        inline static bool KeyPressed(uint32_t key) { return mPressedKeys[key]; }
-        inline static bool KeyHeld(uint32_t key) { return glfwGetKey(mCurrentWindow, key) == GLFW_PRESS; }
-        inline static bool KeyReleased(uint32_t key) { return mReleasedKeys[key]; }
+        static bool KeyPressed(uint32_t key) { return mPressedKeys[key]; }
+        static bool KeyHeld(uint32_t key) { return glfwGetKey(mCurrentWindow, key) == GLFW_PRESS; }
+        static bool KeyReleased(uint32_t key) { return mReleasedKeys[key]; }
 
-        inline static bool MouseButtonPressed(uint32_t button) { return mPressedMouseButtons[button]; }
-        inline static bool MouseButtonHeld(uint32_t button) { return glfwGetMouseButton(mCurrentWindow, button); }
-        inline static bool MouseButtonReleased(uint32_t button) { return mReleasedMouseButtons[button]; }
+        static bool MouseButtonPressed(uint32_t button) { return mPressedMouseButtons[button]; }
+        static bool MouseButtonHeld(uint32_t button) { return glfwGetMouseButton(mCurrentWindow, button); }
+        static bool MouseButtonReleased(uint32_t button) { return mReleasedMouseButtons[button]; }
+
+        static std::pair<float, float> GetMousePosition() {
+            double x, y;
+            glfwGetCursorPos(mCurrentWindow, &x, &y);
+            return std::make_pair(static_cast<float>(x), static_cast<float>(y));
+        }
 
     protected:
         static void SetCurrentWindow(GLFWwindow* window) { mCurrentWindow = window; }
@@ -43,6 +53,7 @@ namespace OGLR {
         inline static int mPreviousKeyState[NUM_KEYS] = {0};
         inline static bool mPressedKeys[NUM_KEYS] = {false};
         inline static bool mReleasedKeys[NUM_KEYS] = {false};
+        
         inline static const int NUM_MOUSE_BUTTONS= 8;
         inline static int mPreviousMouseButtonState[NUM_MOUSE_BUTTONS] = {0};
         inline static bool mPressedMouseButtons[NUM_MOUSE_BUTTONS] = {false};
