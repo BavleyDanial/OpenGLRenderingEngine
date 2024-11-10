@@ -41,6 +41,13 @@ int main(int argc, char** argv) {
     std::vector<uint32_t> indices;
     std::map<std::tuple<int, int, int>, int> vertexMap;
 
+    std::vector<uint32_t> mat_indices;
+    std::vector<uint32_t> matsi = {0};
+    std::vector<uint32_t> mat_counts;
+
+    int o = 0;
+    mat_indices.push_back(0);
+    mat_counts.push_back(0);
     for (uint32_t i = 0; i < mesh.NF(); i++) {
         for (uint32_t j = 0; j < 3; ++j) {
             uint32_t pos_index = mesh.F(static_cast<int>(i)).v[j];
@@ -65,24 +72,18 @@ int main(int argc, char** argv) {
             }
 
             indices.push_back(vertexMap[key]);
+            int mi = mesh.GetMaterialIndex(i);
+            if (matsi.back() != mi) {
+                mat_counts.push_back(indices.size());
+                matsi.push_back(mi);
+            }
         }
     }
 
-    struct Texture {
-        uint32_t id = 0;
-        uint8_t* data = nullptr;
-        int width, height, components = 0;
-    };
-    
-    Texture lTex;
-    std::string tex_path = std::string("res/") + std::string(mesh.M(0).map_Kd.data);
-    lTex.data = stbi_load(tex_path.c_str(), &lTex.width, &lTex.height, &lTex.components, 0);
-    
-    Texture sTex;
-    tex_path = std::string("res/") + std::string(mesh.M(0).map_Ks.data);
-    sTex.data = stbi_load(tex_path.c_str(), &sTex.width, &sTex.height, &sTex.components, 0);
-    
+    mat_counts.push_back(indices.size());
+
 	std::cout << "Vertices: " << mesh.NV() << " Triangles: " << mesh.NF() << "\n";
+	std::cout << "Material Count: " << mesh.NM() << "\n";
 
     glEnable(GL_DEPTH_TEST);
     //glEnable(GL_CULL_FACE);
@@ -104,29 +105,76 @@ int main(int argc, char** argv) {
     glVertexAttribPointer(2, 2, GL_FLOAT, false, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
-    glGenTextures(1, &lTex.id);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, lTex.id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                    lTex.width, lTex.height, 0,
-                    GL_RGB, GL_UNSIGNED_BYTE, lTex.data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    glGenTextures(1, &sTex.id);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, sTex.id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                    sTex.width, sTex.height, 0,
-                    GL_RGB, GL_UNSIGNED_BYTE, sTex.data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    struct Texture {
+        uint8_t* data;
+        uint32_t id;
+        int width, height = 0;
+        int components = 0;
+    };
+
+    struct Mat {
+        glm::vec3 Ka;
+        glm::vec3 Kd;
+        glm::vec3 Ks;
+        float shininess;
+        Texture lambert;
+        Texture specular;
+        std::string name;
+    };
+
+    std::vector<Mat> mats;
+
+    for (uint32_t i = 0; i < mesh.NM(); i++) {
+        Mat mat;
+        mat.name = mesh.M(i).name;
+        mat.Ka = glm::vec3(mesh.M(i).Ka[0], mesh.M(i).Ka[1], mesh.M(i).Ka[2]);
+        mat.Kd = glm::vec3(mesh.M(i).Kd[0], mesh.M(i).Kd[1], mesh.M(i).Kd[2]);
+        mat.Ks = glm::vec3(mesh.M(i).Ks[0], mesh.M(i).Ks[1], mesh.M(i).Ks[2]);
+        mat.shininess = mesh.M(i).Ns;
+        if (mesh.M(i).map_Kd.data) {
+            std::string tex_path = std::string("res/") + std::string(mesh.M(i).map_Kd.data);
+            mat.lambert.data = stbi_load(tex_path.c_str(), &mat.lambert.width, &mat.lambert.height, &mat.lambert.components, 0);
+        } else {
+            mat.lambert.data = new uint8_t[3];
+            mat.lambert.width = 1;
+            mat.lambert.height = 1;
+        }
+        if (mesh.M(i).map_Ks.data) {
+            std::string tex_path = std::string("res/") + std::string(mesh.M(i).map_Ks.data);
+            mat.specular.data = stbi_load(tex_path.c_str(), &mat.specular.width, &mat.specular.height, &mat.specular.components, 0);
+        } else {
+            mat.specular.data = new uint8_t[3];
+            mat.specular.width = 1;
+            mat.specular.height = 1;
+        }
+        mats.push_back(mat);
+    }
+
+    for (uint32_t i = 0; i < mats.size(); i++) {
+        glGenTextures(1, &mats[i].lambert.id);
+        glActiveTexture(GL_TEXTURE0 + i*2);
+        glBindTexture(GL_TEXTURE_2D, mats[i].lambert.id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                        mats[i].lambert.width, mats[i].lambert.height, 0,
+                        GL_RGB, GL_UNSIGNED_BYTE, mats[i].lambert.data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        glGenTextures(1, &mats[i].specular.id);
+        glActiveTexture(GL_TEXTURE1 + i*2 + 1);
+        glBindTexture(GL_TEXTURE_2D, mats[i].specular.id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                        mats[i].specular.width, mats[i].specular.height, 0,
+                        GL_RGB, GL_UNSIGNED_BYTE, mats[i].specular.data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
 
     bool point_mode = false;
     bool line_mode = false;
@@ -138,10 +186,9 @@ int main(int argc, char** argv) {
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.1f));
+    model = glm::scale(model, glm::vec3(0.001f));
 
     glm::vec3 light_dir = glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 lambert = glm::vec3(1.0f, 0.0f, 0.0f);
     float light_intensity = 1.0f;
 
     float lastX = static_cast<float>(window.GetWidth()) / 2;
@@ -249,20 +296,28 @@ int main(int argc, char** argv) {
         default_shader->SetUniformMatrix4("mvp", mvp);
         default_shader->SetUniformMatrix4("mvMatrix", mv);
         default_shader->SetUniformMatrix4("normalMatrix", mv_norm);
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, lTex.id); 
-        default_shader->SetUniform1i("tex", 0);
-        
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, sTex.id); 
-        default_shader->SetUniform1i("spec_tex", 1);
         
         default_shader->SetUniform3f("viewPos", cam_pos);
         default_shader->SetUniform3f("lightDir", glm::normalize(glm::mat3(view) * glm::normalize(light_dir)));
         default_shader->SetUniform1f("light_intensity", light_intensity);
 
-        glDrawElements(GL_TRIANGLES, static_cast<int>(indices.size()), GL_UNSIGNED_INT, nullptr);
+        int off = 0;
+        for (uint32_t i = 0; i < 7; i++) {
+            default_shader->SetUniform3f("ambient_color", mats[i].Ka);
+            default_shader->SetUniform3f("diffuse_color", mats[i].Kd);
+            default_shader->SetUniform3f("specular_color", mats[i].Ks);
+            default_shader->SetUniform1f("specular_expo", mats[i].shininess);
+            glActiveTexture(GL_TEXTURE0 + i*2);
+            glBindTexture(GL_TEXTURE_2D, mats[i].lambert.id); 
+            default_shader->SetUniform1i("diffuse_tex", i*2);
+            
+            glActiveTexture(GL_TEXTURE0 + i*2 + 1);
+            glBindTexture(GL_TEXTURE_2D, mats[i].specular.id); 
+            default_shader->SetUniform1i("specular_tex", i*2 + 1);
+
+            glDrawElements(GL_TRIANGLES, (mat_counts[i+1] - mat_counts[i]), GL_UNSIGNED_INT, (void*)(off * sizeof(uint32_t)));
+            off = mat_counts[i+1] - 1;
+        }
 
         window.OnUpdate();
     }
