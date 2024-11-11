@@ -32,8 +32,6 @@ namespace OGLR {
         bool IsFullScreen() const { return mSpecs.fullscreen; }
 
         void Focus() const { Input::SetCurrentWindow(mGLFWwindow); }
-        void LockMouse() const { glfwSetInputMode(mGLFWwindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED); };
-        void UnLockMouse() const { glfwSetInputMode(mGLFWwindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL); };
     protected:
         GLFWwindow* mGLFWwindow;
         WindowSpecs mSpecs;

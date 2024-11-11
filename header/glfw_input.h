@@ -1,8 +1,7 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
-
-#include <tuple>
+#include <bits/stl_pair.h>
 
 #include "glfw_window.h"
 
@@ -17,6 +16,10 @@ namespace OGLR {
         static bool MouseButtonPressed(uint32_t button) { return mPressedMouseButtons[button]; }
         static bool MouseButtonHeld(uint32_t button) { return glfwGetMouseButton(mCurrentWindow, button); }
         static bool MouseButtonReleased(uint32_t button) { return mReleasedMouseButtons[button]; }
+
+        static void LockMouse() { glfwSetInputMode(mCurrentWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED); };
+        static void UnLockMouse() { glfwSetInputMode(mCurrentWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL); };
+        static bool IsMouseLocked() { return glfwGetInputMode(mCurrentWindow, GLFW_CURSOR) == GLFW_CURSOR_DISABLED; }
 
         static std::pair<float, float> GetMousePosition() {
             double x, y;
@@ -53,7 +56,7 @@ namespace OGLR {
         inline static int mPreviousKeyState[NUM_KEYS] = {0};
         inline static bool mPressedKeys[NUM_KEYS] = {false};
         inline static bool mReleasedKeys[NUM_KEYS] = {false};
-        
+
         inline static const int NUM_MOUSE_BUTTONS= 8;
         inline static int mPreviousMouseButtonState[NUM_MOUSE_BUTTONS] = {0};
         inline static bool mPressedMouseButtons[NUM_MOUSE_BUTTONS] = {false};
