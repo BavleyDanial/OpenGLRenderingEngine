@@ -1,9 +1,7 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
-#include <bits/stl_pair.h>
-
-#include "glfw_window.h"
+#include <utility>
 
 namespace OGLR {
 
@@ -32,21 +30,21 @@ namespace OGLR {
         static void OnUpdate() {
             glfwPollEvents();
             for (int key = 0; key < NUM_KEYS; key++) {
-                int currentKeyState = glfwGetKey(mCurrentWindow, key);
+                int current_key_state = glfwGetKey(mCurrentWindow, key);
 
-                mPressedKeys[key] =  currentKeyState == GLFW_PRESS && mPreviousKeyState[key] == GLFW_RELEASE;
-                mReleasedKeys[key] = currentKeyState == GLFW_RELEASE && mPreviousKeyState[key] == GLFW_PRESS;
+                mPressedKeys[key] =  current_key_state == GLFW_PRESS && mPreviousKeyState[key] == GLFW_RELEASE;
+                mReleasedKeys[key] = current_key_state == GLFW_RELEASE && mPreviousKeyState[key] == GLFW_PRESS;
 
-                mPreviousKeyState[key] = currentKeyState;
+                mPreviousKeyState[key] = current_key_state;
             }
 
             for (int button = 0; button < NUM_MOUSE_BUTTONS; button++) {
-                int currentButtonState = glfwGetMouseButton(mCurrentWindow, button);
+                int current_button_state = glfwGetMouseButton(mCurrentWindow, button);
 
-                mPressedMouseButtons[button] =  currentButtonState == GLFW_PRESS && mPreviousMouseButtonState[button] == GLFW_RELEASE;
-                mReleasedMouseButtons[button] = currentButtonState == GLFW_RELEASE && mPreviousMouseButtonState[button] == GLFW_PRESS;
+                mPressedMouseButtons[button] =  current_button_state == GLFW_PRESS && mPreviousMouseButtonState[button] == GLFW_RELEASE;
+                mReleasedMouseButtons[button] = current_button_state == GLFW_RELEASE && mPreviousMouseButtonState[button] == GLFW_PRESS;
 
-                mPreviousMouseButtonState[button] = currentButtonState;
+                mPreviousMouseButtonState[button] = current_button_state;
             }
         }
 
@@ -66,3 +64,6 @@ namespace OGLR {
     };
 
 }
+
+
+

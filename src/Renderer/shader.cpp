@@ -87,7 +87,7 @@ namespace OGLR {
     }
 
     const ShaderSource Shader::ParseShader() {
-        std::ifstream inputFile(mFilePath);
+        std::ifstream input_file(mFilePath);
         std::string line;
 
         ShaderType type = ShaderType::UNKNOWN;
@@ -97,7 +97,7 @@ namespace OGLR {
         std::stringstream geometrySS;
         std::stringstream computeSS;
 
-        while (std::getline(inputFile, line)) {
+        while (std::getline(input_file, line)) {
             // If the line has the '#shader' figure out which stringstream we will write to
             if (line.find("#shader") != std::string::npos) {
                 if (line.find("vertex") != std::string::npos)
@@ -122,16 +122,16 @@ namespace OGLR {
             }
         }
         // If the string of the source code of a type is not empty store it and return it
-        ShaderSource shaderSrc;
+        ShaderSource shader_src;
         if (!vertexSS.str().empty())
-            shaderSrc.vertex = vertexSS.str();
+            shader_src.vertex = vertexSS.str();
         if (!fragmentSS.str().empty())
-            shaderSrc.fragment = fragmentSS.str();
+            shader_src.fragment = fragmentSS.str();
         if (!geometrySS.str().empty())
-            shaderSrc.geometry = geometrySS.str();
+            shader_src.geometry = geometrySS.str();
         if (!computeSS.str().empty())
-            shaderSrc.compute = computeSS.str();
-        return shaderSrc;
+            shader_src.compute = computeSS.str();
+        return shader_src;
     }
 
 

@@ -29,7 +29,7 @@ in vec3 fragNormal;
 in vec3 fragPosition;
 in vec2 texCoord;
 
-uniform sampler2D diffuse_tex;
+uniform sampler2D albedo_tex;
 uniform sampler2D specular_tex;
 uniform float specular_expo;
 
@@ -43,7 +43,7 @@ void main() {
     vec3 viewDir = -normalize(fragPosition);
     vec3 lightDirection = -normalize(lightDir);
 
-    vec3 color = texture(diffuse_tex, texCoord).xyz;
+    vec3 color = texture(albedo_tex, texCoord).xyz;
     vec3 ambient = 0.15f * color;
 
     float diff = max(dot(normal, lightDirection), 0.0f);

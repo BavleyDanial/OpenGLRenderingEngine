@@ -5,15 +5,16 @@
 
 #include <Renderer/vertex_buffer.h>
 #include <Renderer/index_buffer.h>
+#include <Renderer/vertex_array.h>
 #include <Renderer/shader.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <cyCodeBase-master/cyTriMesh.h>
+#include <cy/cyTriMesh.h>
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image/stb_image.h>
+#include <stb/stb_image.h>
 
 #include <iostream>
 #include <cstdint>
@@ -27,11 +28,12 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    OGLR::WindowSpecs windowSpecs{};
-	windowSpecs.fullscreen = false;
-    windowSpecs.width = 1920;
-    windowSpecs.height = 1080;
-    OGLR::Window window(windowSpecs);
+    OGLR::WindowSpecs window_specs{};
+	window_specs.fullscreen = false;
+	window_specs.vsync = true;
+    window_specs.width = 1920;
+    window_specs.height = 1080;
+    OGLR::Window window(window_specs);
 
     std::unique_ptr<OGLR::Shader> default_shader = std::make_unique<OGLR::Shader>("res/shaders/default.glsl");
     cy::TriMesh mesh;
@@ -39,15 +41,12 @@ int main(int argc, char** argv) {
 
     std::vector<float> buffer_data;
     std::vector<uint32_t> indices;
-    std::map<std::tuple<int, int, int>, int> vertexMap;
+    std::map<std::tuple<int, int, int>, int> vertex_map;
 
-    std::vector<uint32_t> mat_indices;
-    std::vector<uint32_t> matsi = {0};
-    std::vector<uint32_t> mat_counts;
+    std::vector<uint32_t> mat_indices = {0};
+    std::vector<uint32_t> mat_counts = {0};
+    uint32_t current_mat_index = 0;
 
-    int o = 0;
-    mat_indices.push_back(0);
-    mat_counts.push_back(0);
     for (uint32_t i = 0; i < mesh.NF(); i++) {
         for (uint32_t j = 0; j < 3; ++j) {
             uint32_t pos_index = mesh.F(static_cast<int>(i)).v[j];
@@ -55,7 +54,7 @@ int main(int argc, char** argv) {
             uint32_t tex_index = mesh.FT(static_cast<int>(i)).v[j];
             auto key = std::make_tuple(pos_index, norm_index, tex_index);
 
-            if (!vertexMap.contains(key)) {
+            if (!vertex_map.contains(key)) {
                 auto position = mesh.V(static_cast<int>(pos_index));
                 auto norm = mesh.VN(static_cast<int>(norm_index));
                 auto tex = mesh.VT(static_cast<int>(tex_index));
@@ -68,42 +67,37 @@ int main(int argc, char** argv) {
                 buffer_data.push_back(tex[0]);
                 buffer_data.push_back(tex[1]);
 
-                vertexMap[key] = static_cast<int>(buffer_data.size() / 8 - 1);
+                vertex_map[key] = static_cast<int>(buffer_data.size() / 8 - 1);
             }
 
-            indices.push_back(vertexMap[key]);
+            indices.push_back(vertex_map[key]);
             int mi = mesh.GetMaterialIndex(i);
-            if (matsi.back() != mi) {
+            if (current_mat_index != mi) {
                 mat_counts.push_back(indices.size());
-                matsi.push_back(mi);
+                current_mat_index = mi;
             }
         }
     }
-
     mat_counts.push_back(indices.size());
 
-	std::cout << "Vertices: " << mesh.NV() << " Triangles: " << mesh.NF() << "\n";
+	std::cout << "Vertices: " << indices.size() << " Triangles: " << indices.size() / 3 << "\n";
 	std::cout << "Material Count: " << mesh.NM() << "\n";
 
     glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
-
-    uint32_t vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+    
+    OGLR::VertexArray vertex_array;
+    vertex_array.Bind();
 
     OGLR::VertexBuffer vertex_buff(buffer_data);
-    vertex_buff.Bind();
     OGLR::IndexBuffer index_buff(indices);
-    index_buff.Bind();
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, 8*sizeof(float), nullptr);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, false, 8*sizeof(float), (void*) (3*sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, false, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
+    OGLR::VertexLayout layout;
+    
+    layout.Push<float>(3, false);
+    layout.Push<float>(3, false);
+    layout.Push<float>(2, false);
+    vertex_array.AddVertexData(vertex_buff, index_buff, layout);
 
     struct Texture {
         uint8_t* data;
@@ -114,12 +108,13 @@ int main(int argc, char** argv) {
 
     struct Material {
         std::string name;
-        Texture diffuse;
+        Texture albedo;
         Texture specular;
         float shininess;
     };
 
     std::vector<Material> mats;
+    stbi_set_flip_vertically_on_load(true);
 
     for (uint32_t i = 0; i < mesh.NM(); i++) {
         Material mat;
@@ -127,20 +122,24 @@ int main(int argc, char** argv) {
         glm::vec3 kd = glm::vec3(mesh.M(i).Kd[0], mesh.M(i).Kd[1], mesh.M(i).Kd[2]);
         glm::vec3 ks = glm::vec3(mesh.M(i).Ks[0], mesh.M(i).Ks[1], mesh.M(i).Ks[2]);
 
+        std::cout << mat.name << "\n";
+        std::cout << "Diffuse:" << kd.x << " " << kd.y << " " << kd.z << "\n";
+        std::cout << "Specular:" << ks.x << " " << ks.y << " " << ks.z << "\n";
+
         mat.shininess = mesh.M(i).Ns;
         if (mesh.M(i).map_Kd.data) {
-            std::string tex_path = std::string("res/") + std::string(mesh.M(i).map_Kd.data);
-            mat.diffuse.data = stbi_load(tex_path.c_str(), &mat.diffuse.width, &mat.diffuse.height, &mat.diffuse.components, 0);
+            std::string tex_path = std::string("res/fixed-sponza/") + std::string(mesh.M(i).map_Kd.data);
+            mat.albedo.data = stbi_load(tex_path.c_str(), &mat.albedo.width, &mat.albedo.height, &mat.albedo.components, 0);
         } else {
-            mat.diffuse.data = new uint8_t[3]{(uint8_t)(1 * kd.x), (uint8_t)(1 * kd.y), (uint8_t)(1 * kd.z)};
-            mat.diffuse.width = 1;
-            mat.diffuse.height = 1;
+            mat.albedo.data = new uint8_t[3]{(uint8_t)(255 * kd.x), (uint8_t)(255 * kd.y), (uint8_t)(255 * kd.z)};
+            mat.albedo.width = 1;
+            mat.albedo.height = 1;
         }
         if (mesh.M(i).map_Ks.data) {
-            std::string tex_path = std::string("res/") + std::string(mesh.M(i).map_Ks.data);
+            std::string tex_path = std::string("res/fixed-sponza/") + std::string(mesh.M(i).map_Ks.data);
             mat.specular.data = stbi_load(tex_path.c_str(), &mat.specular.width, &mat.specular.height, &mat.specular.components, 0);
         } else {
-            mat.diffuse.data = new uint8_t[3]{(uint8_t)(1 * ks.x), (uint8_t)(1 * ks.y), (uint8_t)(1 * ks.z)};
+            mat.specular.data = new uint8_t[3]{(uint8_t)(255 * ks.x), (uint8_t)(255 * ks.y), (uint8_t)(255 * ks.z)};
             mat.specular.width = 1;
             mat.specular.height = 1;
         }
@@ -148,12 +147,18 @@ int main(int argc, char** argv) {
     }
 
     for (uint32_t i = 0; i < mats.size(); i++) {
-        glGenTextures(1, &mats[i].diffuse.id);
+        glGenTextures(1, &mats[i].albedo.id);
         glActiveTexture(GL_TEXTURE0 + i*2);
-        glBindTexture(GL_TEXTURE_2D, mats[i].diffuse.id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                        mats[i].diffuse.width, mats[i].diffuse.height, 0,
-                        GL_RGB, GL_UNSIGNED_BYTE, mats[i].diffuse.data);
+        glBindTexture(GL_TEXTURE_2D, mats[i].albedo.id);
+        if (mats[i].albedo.components == 3) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                            mats[i].albedo.width, mats[i].albedo.height, 0,
+                            GL_RGB, GL_UNSIGNED_BYTE, mats[i].albedo.data);
+        } else if (mats[i].albedo.components == 4) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                            mats[i].albedo.width, mats[i].albedo.height, 0,
+                            GL_RGBA, GL_UNSIGNED_BYTE, mats[i].albedo.data);
+        }
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -163,9 +168,15 @@ int main(int argc, char** argv) {
         glGenTextures(1, &mats[i].specular.id);
         glActiveTexture(GL_TEXTURE1 + i*2 + 1);
         glBindTexture(GL_TEXTURE_2D, mats[i].specular.id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                        mats[i].specular.width, mats[i].specular.height, 0,
-                        GL_RGB, GL_UNSIGNED_BYTE, mats[i].specular.data);
+        if (mats[i].specular.components == 3) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                         mats[i].specular.width, mats[i].specular.height, 0,
+                         GL_RGB, GL_UNSIGNED_BYTE, mats[i].specular.data);
+        } else if (mats[i].specular.components == 4) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                         mats[i].specular.width, mats[i].specular.height, 0,
+                         GL_RGBA, GL_UNSIGNED_BYTE, mats[i].specular.data);
+        }
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -182,10 +193,10 @@ int main(int argc, char** argv) {
         0.01f, 1000.0f);
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    //model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.1f));
 
-    glm::vec3 light_dir = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 light_dir = glm::vec3(-1.0f, -1.0f, 0.0f);
     float light_intensity = 1.0f;
 
     float lastX = static_cast<float>(window.GetWidth()) / 2;
@@ -224,17 +235,17 @@ int main(int argc, char** argv) {
             line_mode = !line_mode;
 
         if (OGLR::Input::KeyHeld(GLFW_KEY_W))
-            cam_pos += cam_front * 3.0f * delta_time;
+            cam_pos += cam_front * 12.0f * delta_time;
         if (OGLR::Input::KeyHeld(GLFW_KEY_S))
-            cam_pos -= cam_front * 3.0f * delta_time;
+            cam_pos -= cam_front * 12.0f * delta_time;
         if (OGLR::Input::KeyHeld(GLFW_KEY_D))
-            cam_pos += cam_right * 3.0f * delta_time;
+            cam_pos += cam_right * 12.0f * delta_time;
         if (OGLR::Input::KeyHeld(GLFW_KEY_A))
-            cam_pos -= cam_right * 3.0f * delta_time;
+            cam_pos -= cam_right * 12.0f * delta_time;
         if (OGLR::Input::KeyHeld(GLFW_KEY_E))
-            cam_pos.y += 3 * delta_time;
+            cam_pos.y += 12 * delta_time;
         if (OGLR::Input::KeyHeld(GLFW_KEY_Q))
-            cam_pos.y -= 3 * delta_time;
+            cam_pos.y -= 12 * delta_time;
 
         if (OGLR::Input::KeyPressed(GLFW_KEY_H)) {
             default_shader.reset(new OGLR::Shader("res/shaders/default.glsl"));
@@ -282,11 +293,6 @@ int main(int argc, char** argv) {
         else if (!point_mode)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        //constexpr float radius = 4.0f;
-        //float camX = static_cast<float>(sin(glfwGetTime())) * radius;
-        //float camZ = static_cast<float>(cos(glfwGetTime())) * radius;
-        //view = glm::lookAt(glm::vec3(camX, 4.0f, camZ), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));  
-
         view = glm::lookAt(cam_pos, cam_pos + cam_front, glm::vec3(0.0, 1.0, 0.0));  
         glm::mat4 mvp = proj * view * model;
         glm::mat4 mv = view * model;
@@ -301,17 +307,17 @@ int main(int argc, char** argv) {
         default_shader->SetUniform1f("light_intensity", light_intensity);
 
         int off = 0;
-        for (uint32_t i = 0; i < 7; i++) {
+        for (uint32_t i = 0; i < mats.size(); i++) {
             glActiveTexture(GL_TEXTURE0 + i*2);
-            glBindTexture(GL_TEXTURE_2D, mats[i].diffuse.id); 
-            default_shader->SetUniform1i("diffuse_tex", i*2);
+            glBindTexture(GL_TEXTURE_2D, mats[i].albedo.id); 
+            default_shader->SetUniform1i("albedo_tex", i*2);
 
             glActiveTexture(GL_TEXTURE0 + i*2 + 1);
             glBindTexture(GL_TEXTURE_2D, mats[i].specular.id); 
             default_shader->SetUniform1i("specular_tex", i*2 + 1);
             default_shader->SetUniform1f("specular_expo", mats[i].shininess);
 
-            glDrawElements(GL_TRIANGLES, (mat_counts[i+1] - mat_counts[i]), GL_UNSIGNED_INT, (void*)(off * sizeof(uint32_t)));
+            glDrawElements(GL_TRIANGLES, (mat_counts[i+1] - mat_counts[i]) + 1, GL_UNSIGNED_INT, (void*)(off * sizeof(uint32_t)));
             off = mat_counts[i+1] - 1;
         }
 
