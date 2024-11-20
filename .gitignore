@@ -14,6 +14,8 @@ _deps
 **.mtl
 **.png
 **.txt
+**.fbx
+**.idea
 
 .cache/
 bin/
