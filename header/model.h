@@ -6,6 +6,7 @@
 
 #include <mesh.h>
 #include <Renderer/shader.h>
+#include <Renderer/Texture2D.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
@@ -16,37 +17,36 @@
 
 namespace OGLR {
 
-    uint32_t LoadTexture(const std::string& path, const std::string& directory) {
-        std::string file_name = directory + "/" + path;
+    inline Texture2D LoadTexture(const std::string& path, const std::string& typeName, const std::string& directory) {
+        TextureSpecs specs;
+        specs.path = directory + "/" + path;
+        specs.type = typeName;
+        
         int width, height, nrComponents;
-        Texture texture;
-        uint8_t* data = stbi_load(file_name.c_str(), &width, &height, &nrComponents, 0);
+        uint8_t* data = stbi_load(specs.path.c_str(), &width, &height, &nrComponents, 0);
         if (data) {
-            int format = GL_RGBA;
             if (nrComponents == 1)
-                format = GL_RED;
+                specs.format = GL_RED;
             else if (nrComponents == 3)
-                format = GL_RGB;
+                specs.format = GL_RGB;
             else if (nrComponents == 4)
-                format = GL_RGBA;
+                specs.format = GL_RGBA;
 
-            glGenTextures(1, &texture.id);
-            glBindTexture(GL_TEXTURE_2D, texture.id);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
+            specs.data = data;
+            specs.width = width;
+            specs.height = height;
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
+            Texture2D texture(specs);
             stbi_image_free(data);
-        } else {
-            std::cout << "Texture failed to load at path: " << path << '\n';
-            stbi_image_free(data);
+            return texture;
         }
-        return texture.id;
+        std::cout << "Texture failed to load at path: " << path << '\n';
+        specs.data = new uint8_t[3]{1, 1, 1};
+        specs.width = 3;
+        specs.height = 1;
+        Texture2D texture(specs);
+        stbi_image_free(data);
+        return texture;
     }
 
     class Model {
@@ -104,7 +104,7 @@ namespace OGLR {
         Mesh processMesh(aiMesh* mesh, const aiScene* scene) {
             std::vector<Vertex> vertices;
             std::vector<uint32_t> indices;
-            std::vector<Texture> textures;
+            std::vector<Texture2D> textures;
 
             for (uint32_t i = 0; i < mesh->mNumVertices; i++) {
                 Vertex vertex;
@@ -148,13 +148,13 @@ namespace OGLR {
             // specular: texture_specularN
             // normal: texture_normalN 
             // 1. diffuse maps
-            std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+            std::vector<Texture2D> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
             textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
             // 2. specular maps
-            std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+            std::vector<Texture2D> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
             textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
             
-            std::vector<Texture> shininessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "texture_shininess");
+            std::vector<Texture2D> shininessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "texture_shininess");
             textures.insert(textures.end(), shininessMaps.begin(), shininessMaps.end());
             
             // return a mesh object created from the extracted mesh data
@@ -163,25 +163,22 @@ namespace OGLR {
 
         // checks all material textures of a given type and loads the textures if they're not loaded yet.
         // the required info is returned as a Texture struct.
-        std::vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& typeName) {
-            std::vector<Texture> textures;
+        std::vector<Texture2D> loadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& typeName) {
+            std::vector<Texture2D> textures;
             for (uint32_t i = 0; i < mat->GetTextureCount(type); i++) {
                 aiString str;
                 mat->GetTexture(type, i, &str);
                 // check if texture was loaded before and if so, continue to next iteration: skip loading a new texture
                 bool skip = false;
                 for (uint32_t j = 0; j < mTexturesLoaded.size(); j++) {
-                    if(std::strcmp(mTexturesLoaded[j].path.c_str(), str.C_Str()) == 0) {
+                    if(std::strcmp(mTexturesLoaded[j].GetPath().c_str(), (mDirectory + '/' + std::string(str.C_Str())).c_str()) == 0) {
                         textures.push_back(mTexturesLoaded[j]);
                         skip = true; // a texture with the same filepath has already been loaded, continue to next one. (optimization)
                         break;
                     }
                 }
                 if(!skip) {   // if texture hasn't been loaded already, load it
-                    Texture texture;
-                    texture.path = std::string(str.C_Str());
-                    texture.id = LoadTexture(str.C_Str(), mDirectory);
-                    texture.type = typeName;
+                    Texture2D texture = LoadTexture(str.C_Str(), typeName, mDirectory);
                     textures.push_back(texture);
                     mTexturesLoaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecessary load duplicate textures.
                 }
@@ -189,7 +186,7 @@ namespace OGLR {
             return textures;
         }
     private:
-        std::vector<Texture> mTexturesLoaded;
+        std::vector<Texture2D> mTexturesLoaded;
         std::vector<Mesh>    mMeshes;
         glm::mat4 mModelMatrix;
         std::string mDirectory;

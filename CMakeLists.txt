@@ -29,12 +29,14 @@ set(STB_HEADER "${CMAKE_SOURCE_DIR}/vendor/stb/")
 set(CY_HEADER "${CMAKE_SOURCE_DIR}/vendor/cyCodeBase-master")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/glfw/")
+add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/assimp/")
 find_package( OpenGL REQUIRED )
 
 set(BIN_NAME "OGLR-${CMAKE_SYSTEM_NAME}-${ARCHITECTURE}")
 add_executable(${BIN_NAME} "${SOURCE}" "${GLAD_SRC}" "${HEADER_SOURCE}")
 
 target_link_libraries(${BIN_NAME} glfw)
+target_link_libraries(${BIN_NAME} assimp)
 target_link_libraries(${BIN_NAME} OpenGL::GL)
 target_include_directories(${BIN_NAME} PUBLIC "${HEADER}" "${GLAD_HEADER}" "${GLM_HEADER}" "${STB_HEADER}" "${CY_HEADER}")
 set_target_properties(${BIN_NAME} PROPERTIES

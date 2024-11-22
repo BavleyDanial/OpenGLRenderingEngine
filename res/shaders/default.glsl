@@ -29,9 +29,8 @@ in vec3 fragNormal;
 in vec3 fragPosition;
 in vec2 texCoord;
 
-uniform sampler2D albedo_tex;
-uniform sampler2D specular_tex;
-uniform float specular_expo;
+uniform sampler2D texture_diffuse1;
+uniform sampler2D texture_specular1;
 
 uniform vec3 lightDir;     // Directional light direction in view space
 uniform float light_intensity;     // Directional light direction in view space
@@ -43,15 +42,15 @@ void main() {
     vec3 viewDir = -normalize(fragPosition);
     vec3 lightDirection = -normalize(lightDir);
 
-    vec3 color = texture(albedo_tex, texCoord).xyz;
+    vec3 color = texture(texture_diffuse1, texCoord).xyz;
     vec3 ambient = 0.15f * color;
 
     float diff = max(dot(normal, lightDirection), 0.0f);
     vec3 diffuse = diff * color;
 
     vec3 halfVec = normalize(lightDirection + viewDir);
-    float spec = pow(max(dot(normal, halfVec), 0.0f), specular_expo);
-    vec3 specular = spec * texture(specular_tex, texCoord).xyz;
+    float spec = pow(max(dot(normal, halfVec), 0.0f), 32);
+    vec3 specular = spec * texture(texture_specular1, texCoord).xyz;
 
     vec3 result = ambient + light_intensity * (diffuse + specular);
     fragColor = vec4(result, 1.0f);

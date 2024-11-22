@@ -3,10 +3,10 @@
 #include <glad/glad.h> // holds all OpenGL type declarations
 
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 #include <Renderer/shader.h>
 #include <Renderer/vertex_array.h>
+#include <Renderer/Texture2D.h>
 
 #include <string>
 #include <vector>
@@ -14,21 +14,9 @@
 
 namespace OGLR {
 
-    struct Vertex {
-        glm::vec3 position;
-        glm::vec3 normal;
-        glm::vec2 tex_coords;
-    };
-
-    struct Texture {
-        uint32_t id;
-        std::string type;
-        std::string path;
-    };
-
     class Mesh {
     public:
-        Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<Texture>& textures)
+        Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<Texture2D>& textures)
             :mVertices(vertices), mIndices(indices), mTextures(textures) {
             mVAO = std::make_unique<VertexArray>();
             mVAO->Bind();
@@ -36,7 +24,6 @@ namespace OGLR {
             mEBO = std::make_unique<IndexBuffer>(indices);
             setupMesh();
         }
-
 
         void Draw(Shader* shader, const glm::mat4& model, const glm::mat4& view, const glm::mat4& proj)  {
             uint32_t diffuseNr  = 1;
@@ -47,8 +34,9 @@ namespace OGLR {
             shader->Bind();
             for(uint32_t i = 0; i < mTextures.size(); i++) {
                 glActiveTexture(GL_TEXTURE0 + i);
+                mTextures[i].Bind();
                 std::string number;
-                std::string name = mTextures[i].type;
+                std::string name = mTextures[i].GetName();
                 if(name == "texture_diffuse")
                     number = std::to_string(diffuseNr++);
                 else if(name == "texture_specular")
@@ -58,7 +46,6 @@ namespace OGLR {
                 else if(name == "texture_shininess")
                     number = std::to_string(shininessNr++);
 
-                glBindTexture(GL_TEXTURE_2D, mTextures[i].id);
                 shader->SetUniform1i(std::string(name + number), i);
             }
             glm::mat4 mvp = proj * view * model;
@@ -71,7 +58,6 @@ namespace OGLR {
             mVAO->Bind();
             glDrawElements(GL_TRIANGLES, static_cast<uint32_t>(mIndices.size()), GL_UNSIGNED_INT, nullptr);
             shader->UnBind();
-            glBindTexture(GL_TEXTURE_2D, 0);
         }
     private:
         void setupMesh() {
@@ -84,7 +70,7 @@ namespace OGLR {
     private:
         std::vector<Vertex>       mVertices;
         std::vector<uint32_t> mIndices;
-        std::vector<Texture>      mTextures;
+        std::vector<Texture2D>      mTextures;
         std::unique_ptr<VertexArray> mVAO;
         std::unique_ptr<VertexBuffer> mVBO;
         std::unique_ptr<IndexBuffer> mEBO;

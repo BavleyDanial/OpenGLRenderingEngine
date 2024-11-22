@@ -35,7 +35,7 @@ namespace OGLR {
         VertexArray();
         ~VertexArray();
 
-        void AddVertexData(const VertexBuffer& vb, const IndexBuffer& ib, const VertexLayout& layout);
+        void AddVertexData(const VertexBuffer* vb, const IndexBuffer* ib, const VertexLayout& layout);
 
         void Bind() const;
         void UnBind() const;
