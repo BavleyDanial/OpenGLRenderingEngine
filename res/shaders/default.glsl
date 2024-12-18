@@ -62,7 +62,7 @@ void main() {
     vec3 diff_color = texture(texture_diffuse1, texCoord).xyz;
     vec3 spec_color = texture(texture_specular1, texCoord).xyz;
     vec3 ambient = 0.15f * diff_color * dir_lights[0].color;
-   
+
     // Light calculations
     vec3 result = ambient;
     for (int i = 0; i < dir_lights_count; i++) {
@@ -73,10 +73,10 @@ void main() {
         vec3 halfVec = normalize(lightDirection + viewDir);
         float spec = pow(max(dot(normal, halfVec), 0.0f), 32);
         vec3 specular = spec * spec_color;
-        
+
         result += dir_lights[i].intensity * (diffuse + specular);
     };
-    
+
     for (int i = 0; i < point_lights_count; i++) {
         vec3 lightDirection = -normalize(point_lights[i].position - viewDir);
         float geo_term = max(dot(normal, lightDirection), 0.0f);
@@ -85,9 +85,9 @@ void main() {
         vec3 halfVec = normalize(lightDirection + viewDir);
         float spec = pow(max(dot(normal, halfVec), 0.0f), 32);
         vec3 specular = spec * spec_color;
-        
+
         result += point_lights[i].intensity * (diffuse + specular);
     };
 
-    fragColor = vec4(result, 1.0f);
+    fragColor = vec4(spec_color, 1.0f);
 }

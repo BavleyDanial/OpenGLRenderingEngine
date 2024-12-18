@@ -8,6 +8,7 @@
 #include <Renderer/vertex_array.h>
 #include <Renderer/Texture2D.h>
 
+#include <iostream>
 #include <string>
 #include <vector>
 #include <memory>
@@ -30,7 +31,7 @@ namespace OGLR {
             uint32_t specularNr = 1;
             uint32_t normalNr   = 1;
             uint32_t shininessNr = 1;
-            
+
             shader->Bind();
             for(uint32_t i = 0; i < mTextures.size(); i++) {
                 glActiveTexture(GL_TEXTURE0 + i);
@@ -59,6 +60,9 @@ namespace OGLR {
             glDrawElements(GL_TRIANGLES, static_cast<uint32_t>(mIndices.size()), GL_UNSIGNED_INT, nullptr);
             mVAO->UnBind();
             shader->UnBind();
+            for(uint32_t i = 0; i < mTextures.size(); i++) {
+                mTextures[i].UnBind();
+            }
         }
     private:
         void setupMesh() {
@@ -76,5 +80,5 @@ namespace OGLR {
         std::unique_ptr<VertexBuffer> mVBO;
         std::unique_ptr<IndexBuffer> mEBO;
     };
-    
+
 }

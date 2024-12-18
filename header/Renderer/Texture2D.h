@@ -8,15 +8,14 @@ namespace OGLR {
    struct TextureSpecs {
       std::string path;
       std::string type;
-      uint8_t* data;
       uint32_t width, height;
       uint32_t format;
    };
-   
-   class Texture2D {
+
+class Texture2D {
    public:
       Texture2D() = default;
-      Texture2D(const TextureSpecs& specs);
+      Texture2D(const uint8_t* data, const TextureSpecs& specs);
 
       void Bind() const;
       void UnBind() const;
@@ -30,5 +29,5 @@ namespace OGLR {
       uint32_t mRendererID;
       TextureSpecs mSpecs;
    };
-   
+
 }

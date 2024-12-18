@@ -11,9 +11,7 @@
 #include <scene.h>
 
 #include <iostream>
-#include <cstdint>
 #include <memory>
-#include <map>
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -22,16 +20,16 @@ int main(int argc, char** argv) {
     }
 
     OGLR::WindowSpecs window_specs{};
-	window_specs.fullscreen = false;
-	window_specs.vsync = true;
+    window_specs.fullscreen = false;
+    window_specs.vsync = true;
     window_specs.width = 1920;
     window_specs.height = 1080;
     OGLR::Window window(window_specs);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
+    //glEnable(GL_CULL_FACE);
+    //glCullFace(GL_BACK);
 
     std::unique_ptr<OGLR::Shader> default_shader = std::make_unique<OGLR::Shader>("res/shaders/default.glsl");
     OGLR::Model model(argv[1]);
@@ -40,7 +38,7 @@ int main(int argc, char** argv) {
     model.Translate(glm::vec3(-20, 0, 0));
     model.Rotate(-90, glm::vec3(1.0f, 0.0f, 0.0f));
     model.Scale(glm::vec3(0.01f));
-    
+
     model2.Translate(glm::vec3(20, 0, 0));
     model2.Rotate(-90, glm::vec3(1.0f, 0.0f, 0.0f));
     model2.Scale(glm::vec3(0.01));
@@ -61,7 +59,7 @@ int main(int argc, char** argv) {
 
     OGLR::DirectionalLight dir_light;
     dir_light.direction = glm::vec3(-1.0f, -1.0f, 0.0f);
-    dir_light.color = glm::vec3(1.0f, 0.0f, 0.0f);
+    dir_light.color = glm::vec3(1.0f);
     dir_light.intensity = 1.0f;
 
     float lastX = static_cast<float>(window.GetWidth()) / 2;
@@ -85,9 +83,9 @@ int main(int argc, char** argv) {
         last_time = current_time;
 
         if (OGLR::Input::KeyPressed(GLFW_KEY_P))
-            OGLR::Input::LockMouse();
-        if (OGLR::Input::KeyPressed(GLFW_KEY_U))
             OGLR::Input::UnLockMouse();
+        if (OGLR::Input::KeyPressed(GLFW_KEY_U))
+            OGLR::Input::LockMouse();
 
         if (OGLR::Input::KeyPressed(GLFW_KEY_K))
             glPointSize(++point_size);
@@ -164,7 +162,7 @@ int main(int argc, char** argv) {
         default_shader->SetUniform3f("dir_lights[0].color", dir_light.color);
         default_shader->SetUniform1f("dir_lights[0].intensity", dir_light.intensity);
         default_shader->SetUniform1i("dir_lights_count", 1);
-        
+
         model.Draw(default_shader.get(), view, proj);
         model2.Draw(default_shader.get(), view, proj);
         window.OnUpdate();

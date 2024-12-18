@@ -13,7 +13,6 @@
 #include <stb/stb_image.h>
 
 #include <string>
-#include <fstream>
 #include <iostream>
 #include <vector>
 
@@ -23,7 +22,7 @@ namespace OGLR {
         TextureSpecs specs;
         specs.path = directory + "/" + path;
         specs.type = typeName;
-        
+
         int width, height, nrComponents;
         uint8_t* data = stbi_load(specs.path.c_str(), &width, &height, &nrComponents, 0);
         if (data) {
@@ -34,19 +33,18 @@ namespace OGLR {
             else if (nrComponents == 4)
                 specs.format = GL_RGBA;
 
-            specs.data = data;
             specs.width = width;
             specs.height = height;
 
-            Texture2D texture(specs);
+            Texture2D texture(data, specs);
             stbi_image_free(data);
             return texture;
         }
         std::cout << "Texture failed to load at path: " << path << '\n';
-        specs.data = new uint8_t[3]{1, 1, 1};
+        data = new uint8_t[3]{1, 1, 1};
         specs.width = 3;
         specs.height = 1;
-        Texture2D texture(specs);
+        Texture2D texture(data, specs);
         stbi_image_free(data);
         return texture;
     }
@@ -57,15 +55,15 @@ namespace OGLR {
             :mModelMatrix(1.0f) {
             loadModel(path);
         }
-        
+
         void Translate(const glm::vec3& world_pos) {
             mModelMatrix = glm::translate(mModelMatrix, world_pos);
         }
-        
+
         void Rotate(float degrees, const glm::vec3& axis) {
             mModelMatrix = glm::rotate(mModelMatrix, glm::radians(degrees), axis);
         }
-        
+
         void Scale(const glm::vec3& world_scale) {
             mModelMatrix = glm::scale(mModelMatrix, world_scale);
         }
@@ -77,11 +75,11 @@ namespace OGLR {
     private:
         void loadModel(const std::string& path) {
             Assimp::Importer importer;
-            const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate          |
+            const aiScene* scene = importer.ReadFile(path,  aiProcess_Triangulate               |
                                                             aiProcess_FixInfacingNormals        |
                                                             aiProcess_PreTransformVertices      |
                                                             aiProcess_GenNormals                |
-		                                                    aiProcess_GenUVCoords               |
+                                                            aiProcess_GenUVCoords               |
                                                             //aiProcess_OptimizeMeshes            |
                                                             //aiProcess_JoinIdenticalVertices     |
                                                             aiProcess_FlipUVs);
@@ -116,14 +114,14 @@ namespace OGLR {
                 vector.y = mesh->mVertices[i].y;
                 vector.z = mesh->mVertices[i].z;
                 vertex.position = vector;
-                
+
                 if (mesh->HasNormals()) {
                     vector.x = mesh->mNormals[i].x;
                     vector.y = mesh->mNormals[i].y;
                     vector.z = mesh->mNormals[i].z;
                     vertex.normal = vector;
                 }
-                
+
                 if(!mesh->mTextureCoords[0]) {
                     vertex.tex_coords = glm::vec2(0.0f, 0.0f);
                 } else {
@@ -135,54 +133,44 @@ namespace OGLR {
 
                 vertices.push_back(vertex);
             }
-            
+
             for (uint32_t i = 0; i < mesh->mNumFaces; i++) {
                 aiFace face = mesh->mFaces[i];
                 for (uint32_t j = 0; j < face.mNumIndices; j++)
-                    indices.push_back(face.mIndices[j]);        
+                    indices.push_back(face.mIndices[j]);
             }
-            
+
             aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-            // we assume a convention for sampler names in the shaders. Each diffuse texture should be named
-            // as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
-            // Same applies to other texture as the following list summarizes:
-            // diffuse: texture_diffuseN
-            // specular: texture_specularN
-            // normal: texture_normalN 
-            // 1. diffuse maps
+
             std::vector<Texture2D> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
             textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-            // 2. specular maps
+
             std::vector<Texture2D> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
             textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-            
+
             std::vector<Texture2D> shininessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "texture_shininess");
             textures.insert(textures.end(), shininessMaps.begin(), shininessMaps.end());
-            
-            // return a mesh object created from the extracted mesh data
+
             return Mesh(vertices, indices, textures);
         }
 
-        // checks all material textures of a given type and loads the textures if they're not loaded yet.
-        // the required info is returned as a Texture struct.
         std::vector<Texture2D> loadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& typeName) {
             std::vector<Texture2D> textures;
             for (uint32_t i = 0; i < mat->GetTextureCount(type); i++) {
                 aiString str;
                 mat->GetTexture(type, i, &str);
-                // check if texture was loaded before and if so, continue to next iteration: skip loading a new texture
                 bool skip = false;
                 for (uint32_t j = 0; j < mTexturesLoaded.size(); j++) {
                     if(std::strcmp(mTexturesLoaded[j].GetPath().c_str(), (mDirectory + '/' + std::string(str.C_Str())).c_str()) == 0) {
                         textures.push_back(mTexturesLoaded[j]);
-                        skip = true; // a texture with the same filepath has already been loaded, continue to next one. (optimization)
+                        skip = true;
                         break;
                     }
                 }
-                if(!skip) {   // if texture hasn't been loaded already, load it
+                if(!skip) {
                     Texture2D texture = LoadTexture(str.C_Str(), typeName, mDirectory);
                     textures.push_back(texture);
-                    mTexturesLoaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecessary load duplicate textures.
+                    mTexturesLoaded.push_back(texture);
                 }
             }
             return textures;
@@ -195,6 +183,4 @@ namespace OGLR {
     };
 
 
-    
-    
 }
