@@ -3,20 +3,15 @@
 #include <glfw_window.h>
 #include <glfw_input.h>
 
-#include <Renderer/vertex_buffer.h>
-#include <Renderer/index_buffer.h>
-#include <Renderer/vertex_array.h>
-#include <Renderer/shader.h>
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <model.h>
+#include <Renderer/shader.h>
+#include <scene.h>
 
 #include <iostream>
 #include <cstdint>
-#include <vector>
 #include <memory>
 #include <map>
 
@@ -32,7 +27,7 @@ int main(int argc, char** argv) {
     window_specs.width = 1920;
     window_specs.height = 1080;
     OGLR::Window window(window_specs);
-    
+
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -40,9 +35,20 @@ int main(int argc, char** argv) {
 
     std::unique_ptr<OGLR::Shader> default_shader = std::make_unique<OGLR::Shader>("res/shaders/default.glsl");
     OGLR::Model model(argv[1]);
+    OGLR::Model model2(argv[1]);
 
+    model.Translate(glm::vec3(-20, 0, 0));
     model.Rotate(-90, glm::vec3(1.0f, 0.0f, 0.0f));
-    model.Scale(glm::vec3(0.1f));
+    model.Scale(glm::vec3(0.01f));
+    
+    model2.Translate(glm::vec3(20, 0, 0));
+    model2.Rotate(-90, glm::vec3(1.0f, 0.0f, 0.0f));
+    model2.Scale(glm::vec3(0.01));
+
+    OGLR::PointLight point_light;
+    point_light.position = glm::vec3(0);
+    point_light.color = glm::vec3(1);
+    point_light.intensity = 1;
 
     bool point_mode = false;
     bool line_mode = false;
@@ -53,8 +59,10 @@ int main(int argc, char** argv) {
         0.01f, 1000.0f);
     glm::mat4 view = glm::mat4(1.0f);
 
-    glm::vec3 light_dir = glm::vec3(-1.0f, -1.0f, 0.0f);
-    float light_intensity = 1.0f;
+    OGLR::DirectionalLight dir_light;
+    dir_light.direction = glm::vec3(-1.0f, -1.0f, 0.0f);
+    dir_light.color = glm::vec3(1.0f, 0.0f, 0.0f);
+    dir_light.intensity = 1.0f;
 
     float lastX = static_cast<float>(window.GetWidth()) / 2;
     float lastY = static_cast<float>(window.GetHeight()) / 2;
@@ -109,10 +117,10 @@ int main(int argc, char** argv) {
         }
 
         if (OGLR::Input::KeyHeld(GLFW_KEY_UP))
-            light_intensity += 1.0f * delta_time;
+            dir_light.intensity += 1.0f * delta_time;
         if (OGLR::Input::KeyHeld(GLFW_KEY_DOWN))
-            light_intensity -= 1.0f * delta_time;
-        light_intensity = glm::max(0.0f, light_intensity);
+            dir_light.intensity -= 1.0f * delta_time;
+        dir_light.intensity = glm::max(0.0f, dir_light.intensity);
 
         if (OGLR::Input::IsMouseLocked()) {
             auto[mouseX, mouseY] = OGLR::Input::GetMousePosition();
@@ -152,9 +160,13 @@ int main(int argc, char** argv) {
         view = glm::lookAt(cam_pos, cam_pos + cam_front, glm::vec3(0.0, 1.0, 0.0));  
 
         default_shader->Bind();
-        default_shader->SetUniform3f("lightDir", glm::normalize(glm::mat3(view) * glm::normalize(light_dir)));
-        default_shader->SetUniform1f("light_intensity", light_intensity);
+        default_shader->SetUniform3f("dir_lights[0].direction", glm::normalize(glm::mat3(view) * glm::normalize(dir_light.direction)));
+        default_shader->SetUniform3f("dir_lights[0].color", dir_light.color);
+        default_shader->SetUniform1f("dir_lights[0].intensity", dir_light.intensity);
+        default_shader->SetUniform1i("dir_lights_count", 1);
+        
         model.Draw(default_shader.get(), view, proj);
+        model2.Draw(default_shader.get(), view, proj);
         window.OnUpdate();
     }
 

@@ -57,6 +57,7 @@ namespace OGLR {
             shader->SetUniformMatrix4("mvp", mvp);
             mVAO->Bind();
             glDrawElements(GL_TRIANGLES, static_cast<uint32_t>(mIndices.size()), GL_UNSIGNED_INT, nullptr);
+            mVAO->UnBind();
             shader->UnBind();
         }
     private:

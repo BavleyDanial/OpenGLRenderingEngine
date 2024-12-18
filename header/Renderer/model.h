@@ -1,10 +1,12 @@
+#pragma once
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include <mesh.h>
+#include <Renderer/mesh.h>
 #include <Renderer/shader.h>
 #include <Renderer/Texture2D.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -79,6 +81,7 @@ namespace OGLR {
                                                             aiProcess_FixInfacingNormals        |
                                                             aiProcess_PreTransformVertices      |
                                                             aiProcess_GenNormals                |
+		                                                    aiProcess_GenUVCoords               |
                                                             //aiProcess_OptimizeMeshes            |
                                                             //aiProcess_JoinIdenticalVertices     |
                                                             aiProcess_FlipUVs);
@@ -120,11 +123,10 @@ namespace OGLR {
                     vector.z = mesh->mNormals[i].z;
                     vertex.normal = vector;
                 }
-
                 
-                if(!mesh->mTextureCoords[0]) 
+                if(!mesh->mTextureCoords[0]) {
                     vertex.tex_coords = glm::vec2(0.0f, 0.0f);
-                else {
+                } else {
                     glm::vec2 vec;
                     vec.x = mesh->mTextureCoords[0][i].x; 
                     vec.y = mesh->mTextureCoords[0][i].y;
