@@ -38,6 +38,12 @@ namespace OGLR {
 
         glViewport(0, 0, static_cast<int>(mSpecs.width), static_cast<int>(mSpecs.height));
         Input::SetCurrentWindow(mGLFWwindow);
+
+        glfwSetWindowUserPointer(mGLFWwindow, this);
+        glfwSetWindowSizeCallback(mGLFWwindow, [](GLFWwindow* window, int width, int height) {
+                Window* ogreWindow = static_cast<Window*>(glfwGetWindowUserPointer(window));
+                ogreWindow->Resize(width, height);
+        });
     }
 
     Window::~Window() {
@@ -47,6 +53,21 @@ namespace OGLR {
 
     void Window::Close() const {
         glfwSetWindowShouldClose(mGLFWwindow, true);
+    }
+
+    void Window::SetWidth(int width) {
+        Resize(width, mSpecs.height);
+    }
+
+    void Window::SetHeight(int height) {
+        Resize(mSpecs.width, height);
+    }
+
+    void Window::Resize(int width, int height) {
+        mSpecs.width = width;
+        mSpecs.height = height;
+        glfwSetWindowSize(mGLFWwindow, static_cast<int>(mSpecs.width), static_cast<int>(mSpecs.height));
+        glViewport(0, 0, static_cast<int>(mSpecs.width), static_cast<int>(mSpecs.height));
     }
 
     void Window::OnUpdate() const {
