@@ -10,6 +10,13 @@ namespace OGLR {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
+    VertexBuffer::VertexBuffer(const std::vector<float>& bufferData) {
+        glGenBuffers(1, &mRendererID);
+        glBindBuffer(GL_ARRAY_BUFFER, mRendererID);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*bufferData.size(), bufferData.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
     void VertexBuffer::Bind() const {
         glBindBuffer(GL_ARRAY_BUFFER, mRendererID);
     }

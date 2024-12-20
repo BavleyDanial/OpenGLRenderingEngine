@@ -89,5 +89,5 @@ void main() {
         result += point_lights[i].intensity * (diffuse + specular);
     };
 
-    fragColor = vec4(spec_color, 1.0f);
+    fragColor = vec4(result, 1.0f);
 }

@@ -41,7 +41,7 @@ namespace OGLR
         void VertexArray::AddVertexData(const VertexBuffer* vb, const IndexBuffer* ib, const VertexLayout& layout) {
                 vb->Bind();
                 ib->Bind();
-                
+
                 int offset = 0;
                 int index = 0;
                 for (auto& element : layout.GetElements()) {

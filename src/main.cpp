@@ -20,10 +20,7 @@ int main(int argc, char** argv) {
     }
 
     OGLR::WindowSpecs window_specs{};
-    window_specs.fullscreen = false;
     window_specs.vsync = true;
-    window_specs.width = 1920;
-    window_specs.height = 1080;
     OGLR::Window window(window_specs);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -32,16 +29,11 @@ int main(int argc, char** argv) {
     //glCullFace(GL_BACK);
 
     std::unique_ptr<OGLR::Shader> default_shader = std::make_unique<OGLR::Shader>("res/shaders/default.glsl");
+    std::unique_ptr<OGLR::Shader> plane_shader = std::make_unique<OGLR::Shader>("res/shaders/bad_reflection.glsl");
     OGLR::Model model(argv[1]);
-    OGLR::Model model2(argv[1]);
 
-    model.Translate(glm::vec3(-20, 0, 0));
     model.Rotate(-90, glm::vec3(1.0f, 0.0f, 0.0f));
     model.Scale(glm::vec3(0.01f));
-
-    model2.Translate(glm::vec3(20, 0, 0));
-    model2.Rotate(-90, glm::vec3(1.0f, 0.0f, 0.0f));
-    model2.Scale(glm::vec3(0.01));
 
     OGLR::PointLight point_light;
     point_light.position = glm::vec3(0);
@@ -76,6 +68,61 @@ int main(int argc, char** argv) {
 
     float yaw = -90.0f, pitch = 0.0f;
     OGLR::Input::LockMouse();
+
+    std::vector<float> planeVertices {
+        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, 0.0f, 1.0f, 1.0f,
+        -0.5f,  0.5f, 0.0f, 0.0f, 1.0f
+    };
+
+    std::vector<uint32_t> planeIndices {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    OGLR::VertexArray planeVA;
+    planeVA.Bind();
+    OGLR::VertexBuffer planeVB(planeVertices);
+    OGLR::IndexBuffer planeIB(planeIndices);
+    OGLR::VertexLayout planeLayout;
+    planeLayout.Push<float>(3, false);
+    planeLayout.Push<float>(2, false);
+    planeVA.AddVertexData(&planeVB, &planeIB, planeLayout);
+
+    glm::mat4 planeModel = glm::mat4(1.0f);
+    planeModel = glm::translate(planeModel, glm::vec3(0.0f, -10.0f, 0.0f));
+    planeModel = glm::rotate(planeModel, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    planeModel = glm::scale(planeModel, glm::vec3(30.0f));
+
+    uint32_t fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    uint32_t renderTexture;
+    glGenTextures(1, &renderTexture);
+    glBindTexture(GL_TEXTURE_2D, renderTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1920, 1080, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    uint32_t depthBuffer;
+    glGenRenderbuffers(1, &depthBuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1920, 1080);
+
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTexture, 0);
+
+    uint32_t drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+    glDrawBuffers(1, drawBuffers);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        return -5;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    int32_t orgFB;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &orgFB);
 
     while (!window.ShouldClose()) {
         float current_time = static_cast<float>(glfwGetTime());
@@ -112,6 +159,7 @@ int main(int argc, char** argv) {
 
         if (OGLR::Input::KeyPressed(GLFW_KEY_H)) {
             default_shader.reset(new OGLR::Shader("res/shaders/default.glsl"));
+            plane_shader.reset(new OGLR::Shader("res/shaders/bad_reflection.glsl"));
         }
 
         if (OGLR::Input::KeyHeld(GLFW_KEY_UP))
@@ -142,9 +190,6 @@ int main(int argc, char** argv) {
             cam_right = glm::cross(cam_front, glm::vec3(0.0f, 1.0f, 0.0f));
         }
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(35.0f/255, 35.0f/255, 35.0f/255, 1);
-
         if (point_mode)
             glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
         else
@@ -154,7 +199,6 @@ int main(int argc, char** argv) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         else if (!point_mode)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
         view = glm::lookAt(cam_pos, cam_pos + cam_front, glm::vec3(0.0, 1.0, 0.0));  
 
         default_shader->Bind();
@@ -163,8 +207,36 @@ int main(int argc, char** argv) {
         default_shader->SetUniform1f("dir_lights[0].intensity", dir_light.intensity);
         default_shader->SetUniform1i("dir_lights_count", 1);
 
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+        glViewport(0, 0, 1920, 1080);
+        glClearColor(1, 1, 1, 1);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         model.Draw(default_shader.get(), view, proj);
-        model2.Draw(default_shader.get(), view, proj);
+        glGenerateTextureMipmap(renderTexture);
+
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, orgFB);
+        glViewport(0, 0, window.GetWidth(), window.GetHeight());
+        glClearColor(35.0f/255, 35.0f/255, 35.0f/255, 1);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        model.Draw(default_shader.get(), view, proj);
+
+        glm::mat4 mvp = proj * view * planeModel;
+        glm::mat4 mv = view * planeModel;
+        glm::mat4 mv_norm = glm::transpose(glm::inverse(mv));
+
+        plane_shader->Bind();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, renderTexture);
+        plane_shader->SetUniformMatrix4("mvMatrix", mv);
+        plane_shader->SetUniformMatrix4("normalMatrix", mv_norm);
+        plane_shader->SetUniformMatrix4("mvp", mvp);
+        plane_shader->SetUniform1i("renTexture", 0);
+
+        planeVA.Bind();
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        planeVA.UnBind();
+        glBindTexture(GL_TEXTURE_2D, 0);
+
         window.OnUpdate();
     }
 

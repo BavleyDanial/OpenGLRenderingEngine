@@ -16,7 +16,8 @@ namespace OGLR {
     class VertexBuffer {
     public:
         VertexBuffer() = default;
-        VertexBuffer(const std::vector<Vertex>& data);
+        VertexBuffer(const std::vector<Vertex>& bufferData);
+        VertexBuffer(const std::vector<float>& bufferData);
 
         void Bind() const;
         void UnBind() const;
